@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iTunes Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f7fb;
+      color: #1b2733;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin-bottom: 8px;
+    }
+    .search-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 220px;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      padding: 12px 18px;
+      background: #2f80ed;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #829ab1;
+      cursor: not-allowed;
+    }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+    .card img {
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .card p {
+      margin: 4px 0;
+      color: #475569;
+      line-height: 1.45;
+    }
+    .status {
+      margin-bottom: 14px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>iTunes Apple Store Search</h1>
+    <p>Enter a keyword to search the iTunes Store for apps and media results.</p>
+    <form id="searchForm" class="search-box">
+      <input id="searchTerm" type="text" placeholder="Type a keyword, e.g. music, calculator, game" aria-label="Search keyword" required />
+      <button id="searchButton" type="submit">Search</button>
+    </form>
+    <div class="status" id="status"></div>
+    <div class="results" id="results"></div>
+  </main>
+
+  <script>
+    const form = document.getElementById('searchForm');
+    const input = document.getElementById('searchTerm');
+    const results = document.getElementById('results');
+    const statusEl = document.getElementById('status');
+    const searchButton = document.getElementById('searchButton');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const keyword = input.value.trim();
+      if (!keyword) {
+        statusEl.textContent = 'Please enter a search keyword.';
+        return;
+      }
+      searchButton.disabled = true;
+      statusEl.textContent = 'Searching…';
+      results.innerHTML = '';
+
+      try {
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(keyword)}&limit=25`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+        const data = await response.json();
+        const items = data.results || [];
+        if (!items.length) {
+          statusEl.textContent = `No results found for "${keyword}".`;
+          return;
+        }
+
+        statusEl.textContent = `Found ${items.length} result${items.length === 1 ? '' : 's'} for "${keyword}".`;
+        results.innerHTML = items.map(item => {
+          const artwork = item.artworkUrl100 || item.artworkUrl60 || '';
+          const title = item.trackName || item.collectionName || item.artistName || 'Untitled';
+          const subtitle = item.artistName || item.sellerName || '';
+          const kind = item.kind || item.wrapperType || item.collectionType || '';
+          const description = item.description || item.longDescription || item.shortDescription || '';
+          const link = item.trackViewUrl || item.collectionViewUrl || item.artistViewUrl || '#';
+
+          return `
+            <article class="card">
+              ${artwork ? `<img src="${artwork}" alt="${title}" />` : ''}
+              <h2>${title}</h2>
+              <p><strong>Type:</strong> ${kind}</p>
+              ${subtitle ? `<p><strong>Creator:</strong> ${subtitle}</p>` : ''}
+              ${description ? `<p>${description}</p>` : ''}
+              <p><a href="${link}" target="_blank" rel="noopener noreferrer">View in iTunes</a></p>
+            </article>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error(error);
+        statusEl.textContent = 'Unable to perform search. Please try again.';
+      } finally {
+        searchButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
